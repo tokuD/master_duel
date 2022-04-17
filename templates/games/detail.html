@@ -1,0 +1,19 @@
+{% extends '_base.html' %}
+
+
+{% block title %}
+    {{ game }}
+{% endblock title %}
+
+
+
+{% block content %}
+    <div class="game-detail">
+        <h2>{{ game }}</h2>
+
+    </div>
+    {% if user in game.players.all %}
+        <p><a href="{% url 'games:create_result' game.pk %}">結果入力</a></p>
+        <p><a href="">デッキ提出</a></p>
+    {% endif %}
+{% endblock content %}

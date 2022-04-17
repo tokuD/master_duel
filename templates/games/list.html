@@ -1,0 +1,14 @@
+{% extends '_base.html' %}
+
+
+{% block title %}
+    試合一覧
+{% endblock title %}
+
+
+
+{% block content %}
+    {% for game in game_list %}
+    <p><a href="{% url 'games:detail' game.pk %}">{{ game }} - {{ game.start_at }}</a></p>
+    {% endfor %}
+{% endblock content %}

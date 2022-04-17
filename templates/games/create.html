@@ -1,0 +1,19 @@
+{% extends '_base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}
+    {{ game }}結果入力
+{% endblock title %}
+
+
+
+{% block content %}
+    <div class="game-detail">
+        <h2>{{ game }}</h2>
+    </div>
+    <form action="" method="post">
+        {% csrf_token %}
+        {{ form|crispy }}
+        <button type="submit" class="btn btn-success">送信</button>
+    </form>
+{% endblock content %}
