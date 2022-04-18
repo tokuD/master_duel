@@ -3,6 +3,7 @@ from django.shortcuts import redirect, render, resolve_url
 from django.views import generic
 from django.contrib.auth import get_user_model
 from django.http import HttpResponseForbidden
+from django.contrib import messages
 
 from games import models
 
