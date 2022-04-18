@@ -12,8 +12,8 @@
         <h2>{{ game }}</h2>
 
     </div>
-    {% if user in game.players.all %}
+    {% if user == game.player1 or user == game.player2 %}
         <p><a href="{% url 'games:create_result' game.pk %}">結果入力</a></p>
-        <p><a href="">デッキ提出</a></p>
+        <p><a href="{% url 'games:submit_deck' game.pk %}">デッキ提出</a></p>
     {% endif %}
 {% endblock content %}

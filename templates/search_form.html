@@ -1,4 +1,4 @@
 <form action="{% url 'games:list' %}" class="form-inline mt-2 mt-md-0" method="get">
-    <input type="text" name="q" class="form-control mr-sm-2" aria-label="Search" placeholder="対戦者 or 試合カテゴリ">
+    <input type="text" name="q" class="form-control mr-sm-2" aria-label="Search" placeholder="対戦者 or 試合カテゴリ" value="{{ searched }}">
     <button type="submit" class="btn btn-primary">Search</button>
 </form>

@@ -1,5 +1,6 @@
 from distutils.command.upload import upload
 from ntpath import realpath
+from termios import TIOCCONS
 import uuid
 from django.db import models
 from django.conf import settings
@@ -28,16 +29,18 @@ class Game(models.Model):
         editable=False
     )
     category = models.ForeignKey(to=GameCategory, on_delete=models.PROTECT, verbose_name='試合カテゴリ', related_name='games')
-    opponent = models.ForeignKey(to=settings.AUTH_USER_MODEL, related_name='opponent', on_delete=models.PROTECT)
-    players = models.ManyToManyField(to=settings.AUTH_USER_MODEL, verbose_name='対戦者', related_name='game')
+    player1 = models.ForeignKey(to=settings.AUTH_USER_MODEL, on_delete=models.PROTECT, verbose_name='player1', related_name='game_player1')
+    player2 = models.ForeignKey(to=settings.AUTH_USER_MODEL, on_delete=models.PROTECT, verbose_name='対戦相手', related_name='game_player2')
     start_at = models.DateTimeField(verbose_name='開始日時', auto_now_add=True)
 
     def __str__(self):
-        return "{} - {} vs. {}".format(self.category.title, *[x for x in self.players.all()])
-        # return self.category.title
+        return "{} - {} vs. {}".format(self.category.title, self.player1, self.player2)
 
     def get_absolute_url(self):
         return reverse('games:detail', kwargs={'pk': self.pk})
+
+    def get_pk(self):
+        return str(self.pk)
 
 
 class SubmittedDeck(models.Model):
