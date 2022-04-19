@@ -25,7 +25,7 @@ class GameListView(generic.ListView):
     def get_context_data(self, **kwargs):
         """検索した際に入力が残るように処理"""
         context = super().get_context_data(**kwargs)
-        searched = self.request.GET.get('q')
+        searched = self.request.GET.get('q') #! クエリパラメータはrequest.GETに、パスパラメータはself.kwargsに入ってる
         if searched:
             context['searched'] = searched
         return context
@@ -53,14 +53,15 @@ class CreateGameResultView(mixins.LoginRequiredMixin, generic.CreateView):
     template_name = 'games/create.html'
     form_class = forms.GameResultCreationForm
 
-
     def get_context_data(self, **kwargs):
         """勝者・敗者の選択肢を出場選手のみに設定"""
         context = super().get_context_data(**kwargs)
         game = models.Game.objects.get(pk=self.kwargs.get('pk'))
-        result = models.GameResult.objects.get(game=game)
-        if result:
+        try:
+            result = models.GameResult.objects.get(game=game)
             context.update({'form': forms.GameResultCreationForm(instance=result)})
+        except models.GameResult.DoesNotExist:
+            pass
         player1_pk = game.player1.pk
         player2_pk = game.player2.pk
         context['form'].fields['win_player'].queryset = get_user_model().objects.all().filter(Q(pk=player1_pk) | Q(pk=player2_pk))
@@ -69,17 +70,26 @@ class CreateGameResultView(mixins.LoginRequiredMixin, generic.CreateView):
 
     def form_valid(self, form):
         game = models.Game.objects.get(pk=self.kwargs.get('pk'))
-        result = models.GameResult.objects.get(game=game)
-        if result:
+        try:
+            result = models.GameResult.objects.get(game=game)
             self.object = result
-            self.object.win_player = form.cleaned_data.get('win_player')
-            self.object.loose_player = form.cleaned_data.get('loose_player')
-        else:
+        except models.GameResult.DoesNotExist:
             self.object = form.save(commit=False)
             self.object.game = game
-        win_deck   = models.SubmittedDeck.objects.get(game=game, player=self.object.win_player)
-        loose_deck = models.SubmittedDeck.objects.get(game=game, player=self.object.loose_player)
-        self.object.win_and_loose_thema = str(win_deck.thema) + str(loose_deck.thema)
+        self.object.win_player = form.cleaned_data.get('win_player')
+        self.object.loose_player = form.cleaned_data.get('loose_player')
+        #! デッキ提出がされていない場合はエラーになってしまう
+        try:
+            win_deck   = models.SubmittedDeck.objects.get(game=game, player=self.object.win_player)
+        except models.SubmittedDeck.DoesNotExist:
+            self.object.win_player = form.cleaned_data.get('loose_player')
+            self.object.loose_player = form.cleaned_data.get('win_player')
+        try:
+            loose_deck = models.SubmittedDeck.objects.get(game=game, player=self.object.loose_player)
+        except models.SubmittedDeck.DoesNotExist: pass
+        try:
+            self.object.win_and_loose_thema = str(win_deck.thema) + str(loose_deck.thema)
+        except: pass
         self.object.save()
         return HttpResponseRedirect(self.get_success_url())
 
@@ -129,7 +139,6 @@ class CreateSubmittedDeck(mixins.LoginRequiredMixin, generic.CreateView):
     #* game, win_and_loose_thema fieldはViewで設定
     def form_valid(self, form):
         pk = self.kwargs.get('pk')
-        # pk = self.request.GET.get('pk') #! 今はPostだからGETには入ってない！\
         game = models.Game.objects.get(pk=pk)
         submitted_deck = models.SubmittedDeck.objects.get(game=game, player=self.request.user)
         if submitted_deck:
