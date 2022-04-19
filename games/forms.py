@@ -2,6 +2,7 @@ from dataclasses import field
 from django import forms
 from django.contrib.auth import get_user_model
 
+
 from . import models
 
 
@@ -16,9 +17,8 @@ class GameCreationForm(forms.ModelForm):
 
     class Meta:
         model = models.Game
-        fields = ('category', 'player2',)
-        widgets = {
-        }
+        fields = ('category', 'player2', 'start_at', )
+
 
 class SubmittedDeckCreationForm(forms.ModelForm):
     """デッキ提出フォーム"""

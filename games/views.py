@@ -6,6 +6,8 @@ from django.db.models import Q
 from django.contrib.auth import get_user_model
 from django.contrib.auth import mixins
 
+from bootstrap_datepicker_plus.widgets import DateTimePickerInput
+
 from . import models, forms
 
 
@@ -51,21 +53,48 @@ class CreateGameResultView(mixins.LoginRequiredMixin, generic.CreateView):
     template_name = 'games/create.html'
     form_class = forms.GameResultCreationForm
 
+
     def get_context_data(self, **kwargs):
         """勝者・敗者の選択肢を出場選手のみに設定"""
         context = super().get_context_data(**kwargs)
         game = models.Game.objects.get(pk=self.kwargs.get('pk'))
+        result = models.GameResult.objects.get(game=game)
+        if result:
+            context.update({'form': forms.GameResultCreationForm(instance=result)})
         player1_pk = game.player1.pk
         player2_pk = game.player2.pk
         context['form'].fields['win_player'].queryset = get_user_model().objects.all().filter(Q(pk=player1_pk) | Q(pk=player2_pk))
         context['form'].fields['loose_player'].queryset = get_user_model().objects.all().filter(Q(pk=player1_pk) | Q(pk=player2_pk))
         return context
 
+    def form_valid(self, form):
+        game = models.Game.objects.get(pk=self.kwargs.get('pk'))
+        result = models.GameResult.objects.get(game=game)
+        if result:
+            self.object = result
+            self.object.win_player = form.cleaned_data.get('win_player')
+            self.object.loose_player = form.cleaned_data.get('loose_player')
+        else:
+            self.object = form.save(commit=False)
+            self.object.game = game
+        win_deck   = models.SubmittedDeck.objects.get(game=game, player=self.object.win_player)
+        loose_deck = models.SubmittedDeck.objects.get(game=game, player=self.object.loose_player)
+        self.object.win_and_loose_thema = str(win_deck.thema) + str(loose_deck.thema)
+        self.object.save()
+        return HttpResponseRedirect(self.get_success_url())
+
+
 class CreateGameView(mixins.LoginRequiredMixin, generic.CreateView):
     """試合登録用View"""
     model = models.Game
     template_name = 'games/create.html'
     form_class = forms.GameCreationForm
+
+    def get_form(self):
+        """日時入力にカレンダーをセット"""
+        form = super().get_form()
+        form.fields['start_at'].widget = DateTimePickerInput(options={'locale': 'ja'})
+        return form
 
     def get_context_data(self, **kwargs):
         """player2の選択肢からrequest userを除外"""
@@ -75,14 +104,43 @@ class CreateGameView(mixins.LoginRequiredMixin, generic.CreateView):
 
     def form_valid(self, form):
         """player1のフィールドにrequest userをセットしてからテーブルに保存"""
-        self.game = form.save(commit=False)
-        self.game.player1 = self.request.user
-        self.game.save()
-        return HttpResponseRedirect(reverse('games:detail', kwargs={'pk': self.game.get_pk()}))
+        self.object = form.save(commit=False)
+        self.object.player1 = self.request.user
+        self.object.save()
+        #! self.objectにformを保存しないとget_success_url()が機能しない！
+        return HttpResponseRedirect(self.get_success_url())
 
-#TODO:
+
+#TODO:試合開始以降は変更不可にする
 class CreateSubmittedDeck(mixins.LoginRequiredMixin, generic.CreateView):
     """デッキ提出用View"""
     model = models.SubmittedDeck
     template_name = 'games/submit_deck.html'
     form_class = forms.SubmittedDeckCreationForm
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        game = models.Game.objects.get(pk=self.kwargs.get('pk'))
+        submitted_deck = models.SubmittedDeck.objects.get(game=game, player=self.request.user)
+        if submitted_deck:
+            context.update({'form': forms.SubmittedDeckCreationForm(instance=submitted_deck)})
+        return context
+
+    #* game, win_and_loose_thema fieldはViewで設定
+    def form_valid(self, form):
+        pk = self.kwargs.get('pk')
+        # pk = self.request.GET.get('pk') #! 今はPostだからGETには入ってない！\
+        game = models.Game.objects.get(pk=pk)
+        submitted_deck = models.SubmittedDeck.objects.get(game=game, player=self.request.user)
+        if submitted_deck:
+            submitted_deck.thema = form.cleaned_data.get('thema')
+            submitted_deck.image1 = form.cleaned_data.get('image1')
+            submitted_deck.image2 = form.cleaned_data.get('image2')
+            self.object = submitted_deck
+        else:
+            self.object = form.save(commit=False)
+            self.object.game = game
+            self.object.player = self.request.user
+        self.object.save()
+        #! self.objectにformを保存しないとget_success_url()が機能しない！
+        return HttpResponseRedirect(self.get_success_url())

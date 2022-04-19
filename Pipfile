@@ -12,6 +12,8 @@ psycopg2-binary = "*"
 whitenoise = "*"
 gunicorn = "*"
 django-debug-toolbar = "*"
+django-bootstrap-datepicker-plus = "*"
+django-bootstrap4 = "*"
 
 [dev-packages]
 

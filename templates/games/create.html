@@ -6,6 +6,10 @@
 {% endblock title %}
 
 
+{% block extra_css %}
+{% endblock extra_css %}
+
+
 
 {% block content %}
     <div class="game-detail">
@@ -17,3 +21,8 @@
         <button type="submit" class="btn btn-success">送信</button>
     </form>
 {% endblock content %}
+
+
+{% block extra_js %}
+    {{ form.media }}
+{% endblock extra_js %}

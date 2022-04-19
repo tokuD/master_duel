@@ -42,6 +42,8 @@ INSTALLED_APPS = [
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
+    'bootstrap4',
+    'bootstrap_datepicker_plus',
     'crispy_forms',
     'debug_toolbar',
     #! Local apps
