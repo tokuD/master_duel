@@ -10,7 +10,18 @@
 {% block content %}
     <div class="game-detail">
         <h2>{{ game }}</h2>
-
+        {% if result %}
+            <h3>勝者:{{ result.win_player }}</h3>
+            <img src="{{ win_deck.image1.url }}" alt="">
+            {% if win_deck.image2 %}
+                <img src="{{ win_deck.image2.url }}" alt="">
+            {% endif %}
+            <h3>敗者:{{ result.loose_player }}</h3>
+            <img src="{{ loose_deck.image1.url }}" alt="">
+            {% if loose_deck.image2 %}
+                <img src="{{ loose_deck.image2.url }}" alt="">
+            {% endif %}
+        {% endif %}
     </div>
     {% if user == game.player1 or user == game.player2 %}
         <p><a href="{% url 'games:create_result' game.pk %}">結果入力</a></p>

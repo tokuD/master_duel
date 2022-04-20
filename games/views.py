@@ -1,3 +1,4 @@
+from tkinter.messagebox import NO
 from django.http import HttpResponseRedirect, QueryDict
 from django.shortcuts import render, redirect, resolve_url
 from django.urls import reverse
@@ -5,11 +6,12 @@ from django.views import generic
 from django.db.models import Q
 from django.contrib.auth import get_user_model
 from django.contrib.auth import mixins
+from django.utils import timezone
+from django.contrib import messages
 
 from bootstrap_datepicker_plus.widgets import DateTimePickerInput
 
 from . import models, forms
-
 
 
 class TopView(generic.TemplateView):
@@ -46,6 +48,17 @@ class GameDetailView(generic.DetailView):
     model = models.Game
     template_name = 'games/detail.html'
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        game = models.Game.objects.get(pk=self.kwargs.get('pk'))
+        try:
+            result = models.GameResult.objects.get(game=game)
+            win_deck = models.SubmittedDeck.objects.get(game=game, player=result.win_player)
+            loose_deck = models.SubmittedDeck.objects.get(game=game, player=result.loose_player)
+            context.update({'win_deck': win_deck, 'loose_deck': loose_deck, 'result': result})
+        except:
+            pass
+        return context
 
 class CreateGameResultView(mixins.LoginRequiredMixin, generic.CreateView):
     """試合結果入力用View"""
@@ -78,7 +91,6 @@ class CreateGameResultView(mixins.LoginRequiredMixin, generic.CreateView):
             self.object.game = game
         self.object.win_player = form.cleaned_data.get('win_player')
         self.object.loose_player = form.cleaned_data.get('loose_player')
-        #! デッキ提出がされていない場合はエラーになってしまう
         try:
             win_deck   = models.SubmittedDeck.objects.get(game=game, player=self.object.win_player)
         except models.SubmittedDeck.DoesNotExist:
@@ -88,9 +100,12 @@ class CreateGameResultView(mixins.LoginRequiredMixin, generic.CreateView):
             loose_deck = models.SubmittedDeck.objects.get(game=game, player=self.object.loose_player)
         except models.SubmittedDeck.DoesNotExist: pass
         try:
+            self.object.win_thema = win_deck.thema
+            self.object.loose_thema = loose_deck.thema
             self.object.win_and_loose_thema = str(win_deck.thema) + str(loose_deck.thema)
         except: pass
         self.object.save()
+        messages.success(self.request, '保存しました。')
         return HttpResponseRedirect(self.get_success_url())
 
 
@@ -117,6 +132,7 @@ class CreateGameView(mixins.LoginRequiredMixin, generic.CreateView):
         self.object = form.save(commit=False)
         self.object.player1 = self.request.user
         self.object.save()
+        messages.success(self.request, '保存しました。')
         #! self.objectにformを保存しないとget_success_url()が機能しない！
         return HttpResponseRedirect(self.get_success_url())
 
@@ -128,28 +144,55 @@ class CreateSubmittedDeck(mixins.LoginRequiredMixin, generic.CreateView):
     template_name = 'games/submit_deck.html'
     form_class = forms.SubmittedDeckCreationForm
 
+    def get(self, request, *args, **kwargs):
+        game = models.Game.objects.get(pk=self.kwargs.get('pk'))
+        if game.start_at <= timezone.now():
+            messages.info(self.request, '提出時刻を過ぎています。')
+            return redirect(to='games:detail', pk=game.pk)
+        return super().get(request, *args, **kwargs)
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         game = models.Game.objects.get(pk=self.kwargs.get('pk'))
-        submitted_deck = models.SubmittedDeck.objects.get(game=game, player=self.request.user)
-        if submitted_deck:
+        try:
+            submitted_deck = models.SubmittedDeck.objects.get(game=game, player=self.request.user)
             context.update({'form': forms.SubmittedDeckCreationForm(instance=submitted_deck)})
+        except models.SubmittedDeck.DoesNotExist:
+            pass
         return context
+
+    def post(self, request, *args, **kwargs):
+        self.object = None
+        form = self.get_form()
+        try:
+            submitted_deck = models.SubmittedDeck.objects.get(game=models.Game.objects.get(pk=self.kwargs.get('pk')), player=self.request.user)
+            form.is_valid()
+            return self.form_valid(form)
+        except models.SubmittedDeck.DoesNotExist:
+            if form.is_valid():
+                return self.form_valid(form)
+            else:
+                return self.form_invalid(form)
 
     #* game, win_and_loose_thema fieldはViewで設定
     def form_valid(self, form):
         pk = self.kwargs.get('pk')
         game = models.Game.objects.get(pk=pk)
-        submitted_deck = models.SubmittedDeck.objects.get(game=game, player=self.request.user)
-        if submitted_deck:
-            submitted_deck.thema = form.cleaned_data.get('thema')
-            submitted_deck.image1 = form.cleaned_data.get('image1')
-            submitted_deck.image2 = form.cleaned_data.get('image2')
+        try:
+            submitted_deck = models.SubmittedDeck.objects.get(game=game, player=self.request.user)
             self.object = submitted_deck
-        else:
+            thema = form.cleaned_data.get('thema')
+            image1 = form.cleaned_data.get('image1')
+            image2 = form.cleaned_data.get('image2')
+            if thema: self.object.thema = thema
+            if image1: self.object.image1 = image1
+            if image2: self.object.image2 = image2
+            print(self.object.image2)
+        except models.SubmittedDeck.DoesNotExist:
             self.object = form.save(commit=False)
             self.object.game = game
             self.object.player = self.request.user
         self.object.save()
+        messages.success(self.request, '保存しました。')
         #! self.objectにformを保存しないとget_success_url()が機能しない！
         return HttpResponseRedirect(self.get_success_url())

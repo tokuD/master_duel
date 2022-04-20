@@ -67,9 +67,11 @@ class SubmittedDeck(models.Model):
 
 
 class GameResult(models.Model):
-    game = models.ForeignKey(to=Game, on_delete=models.CASCADE, related_name='game_result', verbose_name='試合')
+    game = models.OneToOneField(to=Game, on_delete=models.CASCADE, related_name='game_result', verbose_name='試合')
     win_player = models.ForeignKey(to=settings.AUTH_USER_MODEL, on_delete=models.PROTECT, verbose_name='勝者', related_name='game_result_win')
     loose_player = models.ForeignKey(to=settings.AUTH_USER_MODEL, on_delete=models.PROTECT, verbose_name='敗者', related_name='game_result_loose')
+    win_thema = models.CharField(max_length=200, verbose_name='勝ちテーマ')
+    loose_thema = models.CharField(max_length=200, verbose_name='負けテーマ')
     win_and_loose_thema = models.CharField(max_length=200, verbose_name='テーマ勝敗')
 
     def __str__(self):
