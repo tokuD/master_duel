@@ -14,6 +14,7 @@ gunicorn = "*"
 django-debug-toolbar = "*"
 django-bootstrap-datepicker-plus = "*"
 django-bootstrap4 = "*"
+django-bootstrap5 = "*"
 
 [dev-packages]
 
